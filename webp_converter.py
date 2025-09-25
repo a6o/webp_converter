@@ -41,6 +41,8 @@ class WebPConverter:
         self.quality = tk.IntVar(value=saved_quality)
         self.preserve_metadata = tk.BooleanVar(value=saved_metadata)
         self.conversion_running = False
+        self.conversion_cancelled = False  # Flag to track if conversion was cancelled
+        self.source_folder = None  # Track source folder for preserving structure
         
         # Set fixed window size
         self.root.geometry("600x520")
@@ -155,10 +157,21 @@ class WebPConverter:
         self.status_label = ttk.Label(self.progress_frame, text=get_main("ready_status", "Ready to convert images"))
         self.status_label.grid(row=1, column=0, sticky=tk.W)
         
+        # Convert button frame to hold both convert and cancel buttons
+        button_frame = ttk.Frame(main_frame)
+        button_frame.grid(row=4, column=0, columnspan=3, pady=(0, 10))
+        button_frame.columnconfigure(0, weight=1)
+        button_frame.columnconfigure(1, weight=1)
+        
         # Convert button
-        self.convert_button = ttk.Button(main_frame, text=get_main("convert_button", "Convert to WebP"), 
+        self.convert_button = ttk.Button(button_frame, text=get_main("convert_button", "Convert to WebP"), 
                                         command=self.start_conversion)
-        self.convert_button.grid(row=4, column=0, columnspan=3, pady=(0, 10))
+        self.convert_button.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E))
+        
+        # Cancel button (initially hidden)
+        self.cancel_button = ttk.Button(button_frame, text=get_main("cancel_button", "Cancel"), 
+                                       command=self.cancel_conversion)
+        # Don't grid it initially - it will be shown during conversion
         
         # Set default output folder to current directory
         self.output_folder.set(os.getcwd())
@@ -295,15 +308,21 @@ class WebPConverter:
                 # Check if it's a supported image file
                 if self.is_supported_image(file_path):
                     if file_path not in self.selected_files:
+                        # Clear source folder when dropping individual files
+                        if not self.source_folder:
+                            self.source_folder = None
                         self.selected_files.append(file_path)
                         added_files.append(os.path.basename(file_path))
             elif os.path.isdir(file_path):
-                # If it's a directory, add all supported images
+                # If it's a directory, add all supported images and preserve structure
                 new_files = self.get_images_from_folder(file_path)
-                for new_file in new_files:
-                    if new_file not in self.selected_files:
-                        self.selected_files.append(new_file)
-                        added_files.append(os.path.basename(new_file))
+                if new_files:
+                    # Set source folder for structure preservation
+                    self.source_folder = file_path
+                    for new_file in new_files:
+                        if new_file not in self.selected_files:
+                            self.selected_files.append(new_file)
+                            added_files.append(os.path.basename(new_file))
         
         if added_files:
             self.update_files_listbox()
@@ -399,6 +418,8 @@ class WebPConverter:
         )
         
         if files:
+            # Clear source folder when manually selecting files
+            self.source_folder = None
             self.selected_files.extend(files)
             self.update_files_listbox()
             
@@ -410,6 +431,8 @@ class WebPConverter:
             new_files = self.get_images_from_folder(folder)
                 
             if new_files:
+                # Store the source folder for preserving structure
+                self.source_folder = folder
                 self.selected_files.extend(new_files)
                 self.update_files_listbox()
             else:
@@ -419,14 +442,29 @@ class WebPConverter:
     def clear_files(self):
         """Clear the selected files list"""
         self.selected_files.clear()
+        self.source_folder = None  # Clear source folder reference
         self.update_files_listbox()
         
     def update_files_listbox(self):
         """Update the files listbox display"""
         self.files_listbox.delete(0, tk.END)
+        
         for file_path in self.selected_files:
-            filename = os.path.basename(file_path)
-            self.files_listbox.insert(tk.END, filename)
+            if self.source_folder:
+                # Show relative path from source folder
+                try:
+                    source_path = Path(self.source_folder)
+                    input_path = Path(file_path)
+                    relative_path = input_path.relative_to(source_path)
+                    display_name = str(relative_path)
+                except ValueError:
+                    # File is not within source folder, show just filename
+                    display_name = os.path.basename(file_path)
+            else:
+                # No source folder, show just filename
+                display_name = os.path.basename(file_path)
+            
+            self.files_listbox.insert(tk.END, display_name)
         
         # Update drag-drop hint visibility
         self.update_drag_drop_hint()
@@ -458,11 +496,29 @@ class WebPConverter:
             
         # Start conversion in separate thread
         self.conversion_running = True
-        self.convert_button.config(state="disabled")
         
         thread = threading.Thread(target=self.convert_images)
         thread.daemon = True
         thread.start()
+        
+        # Show cancel button during conversion
+        self.show_cancel_button()
+        
+    def cancel_conversion(self):
+        """Cancel the ongoing conversion"""
+        if self.conversion_running:
+            self.conversion_cancelled = True
+            self.root.after(0, self.update_status, get_main("cancelling_status", "Cancelling conversion..."))
+        
+    def show_cancel_button(self):
+        """Show the cancel button and hide the convert button"""
+        self.convert_button.grid_remove()
+        self.cancel_button.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E))
+        
+    def hide_cancel_button(self):
+        """Hide the cancel button and show the convert button"""
+        self.cancel_button.grid_remove()
+        self.convert_button.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E))
         
     def convert_images(self):
         """Convert images to WebP format"""
@@ -472,6 +528,10 @@ class WebPConverter:
             failed_files = []
             
             for i, input_file in enumerate(self.selected_files):
+                # Check if conversion was cancelled
+                if self.conversion_cancelled:
+                    break
+                    
                 try:
                     # Update status
                     filename = os.path.basename(input_file)
@@ -489,7 +549,11 @@ class WebPConverter:
                 self.root.after(0, self.update_progress, progress)
                 
             # Show completion message
-            message = f"Conversion completed!\n\nConverted: {converted_count}/{total_files} files"
+            if self.conversion_cancelled:
+                message = f"Conversion cancelled!\n\nConverted: {converted_count}/{total_files} files before cancellation"
+            else:
+                message = f"Conversion completed!\n\nConverted: {converted_count}/{total_files} files"
+                
             if failed_files:
                 message += f"\n\nFailed files:\n" + "\n".join(failed_files[:5])
                 if len(failed_files) > 5:
@@ -518,10 +582,29 @@ class WebPConverter:
             elif img.mode not in ('RGB', 'RGBA'):
                 img = img.convert('RGB')
                 
-            # Generate output filename
+            # Generate output path - preserve folder structure if source folder exists
             input_path = Path(input_file)
-            output_filename = input_path.stem + '.webp'
-            output_path = Path(self.output_folder.get()) / output_filename
+            output_base = Path(self.output_folder.get())
+            
+            if self.source_folder:
+                # Calculate relative path from source folder
+                source_path = Path(self.source_folder)
+                try:
+                    relative_path = input_path.relative_to(source_path)
+                    # Change extension to .webp
+                    output_filename = relative_path.stem + '.webp'
+                    output_path = output_base / relative_path.parent / output_filename
+                    
+                    # Create subdirectories if they don't exist
+                    output_path.parent.mkdir(parents=True, exist_ok=True)
+                except ValueError:
+                    # File is not within source folder, use flat structure
+                    output_filename = input_path.stem + '.webp'
+                    output_path = output_base / output_filename
+            else:
+                # No source folder, use flat structure
+                output_filename = input_path.stem + '.webp'
+                output_path = output_base / output_filename
             
             # Save as WebP
             save_kwargs = {
@@ -558,6 +641,8 @@ class WebPConverter:
         self.convert_button.config(state="normal")
         self.status_label.config(text="Ready to convert images")
         self.progress_var.set(0)
+        self.conversion_cancelled = False  # Reset cancellation flag
+        self.hide_cancel_button()  # Show convert button, hide cancel button
 
 def main(language=None):
     """Main application entry point"""

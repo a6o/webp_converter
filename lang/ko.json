@@ -11,8 +11,10 @@
     "quality": "품질:",
     "preserve_metadata": "메타데이터 보존",
     "convert_button": "WebP로 변환",
+    "cancel_button": "취소",
     "ready_status": "이미지 변환 준비 완료",
     "converting_status": "변환 중: {}",
+    "cancelling_status": "변환 취소 중...",
     "progress_title": "진행률",
     "select_images_title": "이미지 선택",
     "output_settings_title": "출력 설정"

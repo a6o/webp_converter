@@ -11,8 +11,10 @@
     "quality": "Quality:",
     "preserve_metadata": "Preserve metadata",
     "convert_button": "Convert to WebP",
+    "cancel_button": "Cancel",
     "ready_status": "Ready to convert images",
     "converting_status": "Converting: {}",
+    "cancelling_status": "Cancelling conversion...",
     "progress_title": "Progress",
     "select_images_title": "Select Images",
     "output_settings_title": "Output Settings"
