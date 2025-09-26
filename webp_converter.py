@@ -16,7 +16,6 @@ from about_dialog import show_about
 from lang_manager import init_language, get_lang_manager, get_main, get_menu, get_message, get_dialog
 from config_manager import config
 import time
-import cv2
 
 # Register HEIF opener with Pillow
 pillow_heif.register_heif_opener()
