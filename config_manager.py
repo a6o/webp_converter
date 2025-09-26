@@ -162,6 +162,22 @@ class WebPConverterConfig(ConfigManager):
     def load_last_files_folder(self):
         """Load the last folder used for file selection"""
         return self.load_setting("LastFilesFolder", os.getcwd())
+    
+    def save_method(self, method):
+        """Save WebP compression method (0-6)"""
+        return self.save_int_setting("CompressionMethod", method)
+    
+    def load_method(self):
+        """Load WebP compression method (0-6), default to 6 (best quality)"""
+        return self.load_int_setting("CompressionMethod", 0)
+    
+    def save_lossless(self, lossless):
+        """Save lossless compression setting"""
+        return self.save_bool_setting("LosslessCompression", lossless)
+    
+    def load_lossless(self):
+        """Load lossless compression setting, default to False (lossy)"""
+        return self.load_bool_setting("LosslessCompression", False)
 
 
 # Global instance for easy access

@@ -15,6 +15,8 @@ from tkinterdnd2 import DND_FILES, TkinterDnD
 from about_dialog import show_about
 from lang_manager import init_language, get_lang_manager, get_main, get_menu, get_message, get_dialog
 from config_manager import config
+import time
+import cv2
 
 # Register HEIF opener with Pillow
 pillow_heif.register_heif_opener()
@@ -35,17 +37,21 @@ class WebPConverter:
         saved_quality = config.load_quality()
         saved_metadata = config.load_preserve_metadata()
         saved_output = config.load_output_folder()
+        saved_method = config.load_method()
+        saved_lossless = config.load_lossless()
         
         self.selected_files = []
         self.output_folder = tk.StringVar(value=saved_output)
         self.quality = tk.IntVar(value=saved_quality)
         self.preserve_metadata = tk.BooleanVar(value=saved_metadata)
+        self.compression_method = tk.IntVar(value=saved_method)
+        self.lossless_compression = tk.BooleanVar(value=saved_lossless)
         self.conversion_running = False
         self.conversion_cancelled = False  # Flag to track if conversion was cancelled
         self.source_folder = None  # Track source folder for preserving structure
         
         # Set fixed window size
-        self.root.geometry("600x520")
+        self.root.geometry("600x450")
         
         self.setup_ui()
         self.setup_menu()
@@ -123,27 +129,6 @@ class WebPConverter:
                   command=self.select_output_folder)
         self.browse_btn.grid(row=0, column=2)
         
-        # Quality setting
-        self.quality_title_label = ttk.Label(self.output_frame, text=get_main("quality", "Quality:"))
-        self.quality_title_label.grid(row=1, column=0, sticky=tk.W, pady=(10, 0), padx=(0, 5))
-        quality_frame = ttk.Frame(self.output_frame)
-        quality_frame.grid(row=1, column=1, columnspan=2, sticky=(tk.W, tk.E), pady=(10, 0))
-        
-        self.quality_scale = ttk.Scale(quality_frame, from_=1, to=100, 
-                                      variable=self.quality, orient="horizontal")
-        self.quality_scale.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
-        quality_frame.columnconfigure(0, weight=1)
-        
-        self.quality_value_label = ttk.Label(quality_frame, text=str(self.quality.get()))
-        self.quality_value_label.grid(row=0, column=1)
-        
-        self.quality_scale.configure(command=self.update_quality_label)
-        
-        # Preserve metadata checkbox
-        self.metadata_checkbox = ttk.Checkbutton(self.output_frame, text=get_main("preserve_metadata", "Preserve metadata"), 
-                       variable=self.preserve_metadata, command=self.on_metadata_changed)
-        self.metadata_checkbox.grid(row=2, column=0, columnspan=3, sticky=tk.W, pady=(10, 0))
-        
         # Progress section
         self.progress_frame = ttk.LabelFrame(main_frame, text=get_main("progress_title", "Progress"), padding="10")
         self.progress_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
@@ -198,6 +183,7 @@ class WebPConverter:
         settings_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label=get_menu("settings", "Settings"), menu=settings_menu)
         settings_menu.add_command(label=get_menu("settings_output", "Choose Output Folder..."), command=self.select_output_folder)
+        settings_menu.add_command(label=get_menu("settings_conversion", "Conversion Settings..."), command=self.show_settings_dialog)
         settings_menu.add_separator()
         
         # Language submenu
@@ -225,6 +211,186 @@ class WebPConverter:
     def show_about_dialog(self):
         """Show the About dialog"""
         show_about(self.root)
+    
+    def show_settings_dialog(self):
+        """Show the settings dialog"""
+        self.create_settings_dialog()
+    
+    def create_settings_dialog(self):
+        """Create and show the conversion settings dialog"""
+        # Create dialog window
+        dialog = tk.Toplevel(self.root)
+        dialog.title(get_dialog("settings_title", "Conversion Settings"))
+        dialog.geometry("450x580")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Center the dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (450 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (580 // 2)
+        dialog.geometry(f"450x580+{x}+{y}")
+        
+        # Main frame
+        main_frame = ttk.Frame(dialog, padding="20")
+        main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+        dialog.columnconfigure(0, weight=1)
+        dialog.rowconfigure(0, weight=1)
+        
+        # Quality section
+        quality_frame = ttk.LabelFrame(main_frame, text=get_main("quality_settings", "Quality Settings"), padding="15")
+        quality_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        quality_frame.columnconfigure(1, weight=1)
+        
+        # Quality label and scale
+        quality_label = ttk.Label(quality_frame, text=get_main("quality", "Quality:"))
+        quality_label.grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        
+        # Quality scale frame
+        scale_frame = ttk.Frame(quality_frame)
+        scale_frame.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        scale_frame.columnconfigure(0, weight=1)
+        
+        # Create new quality scale for dialog
+        quality_scale = ttk.Scale(scale_frame, from_=1, to=100, 
+                                 variable=self.quality, orient="horizontal")
+        quality_scale.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
+        
+        # Quality value label
+        quality_value_label = ttk.Label(scale_frame, text=str(self.quality.get()), width=3)
+        quality_value_label.grid(row=0, column=1)
+        
+        # Update function for the dialog
+        def update_quality_display(value=None):
+            quality_value = int(float(self.quality.get()))
+            quality_value_label.config(text=str(quality_value))
+            config.save_quality(quality_value)
+        
+        quality_scale.configure(command=update_quality_display)
+        
+        # Quality description
+        quality_desc = ttk.Label(quality_frame, 
+                                text=get_dialog("quality_desc", "Higher values = better quality, larger files"),
+                                font=("TkDefaultFont", 8),
+                                foreground="gray")
+        quality_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        
+        # Compression method section
+        method_frame = ttk.LabelFrame(main_frame, text=get_main("method_settings", "Compression Method"), padding="15")
+        method_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        method_frame.columnconfigure(1, weight=1)
+        
+        # Method label and scale
+        method_label = ttk.Label(method_frame, text=get_main("method", "Method:"))
+        method_label.grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        
+        # Method scale frame
+        method_scale_frame = ttk.Frame(method_frame)
+        method_scale_frame.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        method_scale_frame.columnconfigure(0, weight=1)
+        
+        # Create method scale for dialog
+        method_scale = ttk.Scale(method_scale_frame, from_=0, to=6, 
+                               variable=self.compression_method, orient="horizontal")
+        method_scale.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
+        
+        # Method value label
+        method_value_label = ttk.Label(method_scale_frame, text=str(self.compression_method.get()), width=3)
+        method_value_label.grid(row=0, column=1)
+        
+        # Update function for the method dialog
+        def update_method_display(value=None):
+            method_value = int(float(self.compression_method.get()))
+            method_value_label.config(text=str(method_value))
+            config.save_method(method_value)
+        
+        method_scale.configure(command=update_method_display)
+        
+        # Method description
+        method_desc = ttk.Label(method_frame, 
+                               text=get_dialog("method_desc", "0 = Fastest (lower quality), 6 = Best quality (slower)"),
+                               font=("TkDefaultFont", 8),
+                               foreground="gray")
+        method_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        
+        # Lossless compression section
+        lossless_frame = ttk.LabelFrame(main_frame, text=get_main("lossless_settings", "Compression Type"), padding="15")
+        lossless_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        
+        # Lossless checkbox
+        lossless_checkbox = ttk.Checkbutton(lossless_frame, 
+                                           text=get_main("lossless_compression", "Lossless compression"),
+                                           variable=self.lossless_compression, 
+                                           command=self.on_lossless_changed)
+        lossless_checkbox.grid(row=0, column=0, sticky=tk.W)
+        
+        # Lossless description
+        lossless_desc = ttk.Label(lossless_frame,
+                                 text=get_dialog("lossless_desc", "Perfect quality, larger files. Disables quality setting when enabled."),
+                                 font=("TkDefaultFont", 8),
+                                 foreground="gray")
+        lossless_desc.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
+        
+        # Metadata section
+        metadata_frame = ttk.LabelFrame(main_frame, text=get_main("metadata_settings", "Metadata Settings"), padding="15")
+        metadata_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        
+        # Metadata checkbox
+        metadata_checkbox = ttk.Checkbutton(metadata_frame, 
+                                           text=get_main("preserve_metadata", "Preserve metadata"),
+                                           variable=self.preserve_metadata, 
+                                           command=self.on_metadata_changed)
+        metadata_checkbox.grid(row=0, column=0, sticky=tk.W)
+        
+        # Metadata description
+        metadata_desc = ttk.Label(metadata_frame,
+                                 text=get_dialog("metadata_desc", "Keeps original image information (EXIF data, color profiles)"),
+                                 font=("TkDefaultFont", 8),
+                                 foreground="gray")
+        metadata_desc.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
+        
+        # Footer section with informational text
+        footer_frame = ttk.Frame(main_frame)
+        footer_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(20, 10))
+        footer_frame.columnconfigure(0, weight=1)
+        
+        # Add a separator line
+        separator = ttk.Separator(footer_frame, orient='horizontal')
+        separator.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 10))
+        
+        # Footer text using ttk Label for consistency
+        footer_content = get_dialog("settings_footer", 
+            "Some settings may not work with large images. Try using higher method or lower quality.")
+        
+        footer_label = ttk.Label(footer_frame,
+                                text=footer_content,
+                                font=("TkDefaultFont", 8),
+                                foreground="gray",
+                                wraplength=400,  # Wrap text at 400 pixels
+                                justify="left")
+        footer_label.grid(row=1, column=0, sticky=(tk.W, tk.E), padx=5)
+        
+        # Button frame
+        button_frame = ttk.Frame(main_frame)
+        button_frame.grid(row=5, column=0, sticky=(tk.W, tk.E))
+        button_frame.columnconfigure(0, weight=1)
+        button_frame.columnconfigure(1, weight=1)
+        
+        # Reset to defaults button
+        reset_btn = ttk.Button(button_frame, text=get_dialog("reset_defaults", "Reset to Defaults"), 
+                              command=lambda: self.reset_to_defaults(dialog, quality_scale, quality_value_label, 
+                                                                    method_scale, method_value_label, 
+                                                                    lossless_checkbox, metadata_checkbox))
+        reset_btn.grid(row=0, column=0, padx=(0, 5), pady=(10, 0), sticky=(tk.W, tk.E))
+        
+        # Close button
+        close_btn = ttk.Button(button_frame, text=get_dialog("close", "Close"), 
+                              command=dialog.destroy)
+        close_btn.grid(row=0, column=1, padx=(5, 0), pady=(10, 0), sticky=(tk.W, tk.E))
+        
+        # Focus the dialog
+        dialog.focus_set()
     
     def switch_language(self, lang_code):
         """Switch application language dynamically"""
@@ -257,10 +423,6 @@ class WebPConverter:
             self.output_label.config(text=get_main("output_folder", "Output Folder:"))
         if hasattr(self, 'browse_btn'):
             self.browse_btn.config(text=get_main("browse", "Browse"))
-        if hasattr(self, 'quality_title_label'):
-            self.quality_title_label.config(text=get_main("quality", "Quality:"))
-        if hasattr(self, 'metadata_checkbox'):
-            self.metadata_checkbox.config(text=get_main("preserve_metadata", "Preserve metadata"))
         if hasattr(self, 'convert_button'):
             self.convert_button.config(text=get_main("convert_button", "Convert to WebP"))
         if hasattr(self, 'status_label'):
@@ -387,6 +549,44 @@ class WebPConverter:
         """Handle metadata checkbox changes"""
         # Save metadata preference
         config.save_preserve_metadata(self.preserve_metadata.get())
+    
+    def on_lossless_changed(self):
+        """Handle lossless compression checkbox changes"""
+        # Save lossless preference
+        config.save_lossless(self.lossless_compression.get())
+    
+    def reset_to_defaults(self, dialog, quality_scale, quality_value_label, method_scale, method_value_label, lossless_checkbox, metadata_checkbox):
+        """Reset all settings to their default values"""
+        import tkinter.messagebox as msgbox
+        
+        # Ask for confirmation
+        if msgbox.askyesno(get_dialog("confirm_reset", "Confirm Reset"), 
+                          get_dialog("confirm_reset_msg", "Reset all settings to default values?")):
+            # Set default values
+            default_quality = 80
+            default_method = 0
+            default_lossless = False
+            default_metadata = True
+            
+            # Update UI elements
+            self.quality.set(default_quality)
+            quality_value_label.config(text=str(default_quality))
+            
+            self.compression_method.set(default_method)
+            method_value_label.config(text=str(default_method))
+            
+            self.lossless_compression.set(default_lossless)
+            self.preserve_metadata.set(default_metadata)
+            
+            # Save to config
+            config.save_quality(default_quality)
+            config.save_method(default_method)
+            config.save_lossless(default_lossless)
+            config.save_preserve_metadata(default_metadata)
+            
+            # Show success message
+            msgbox.showinfo(get_dialog("reset_success", "Settings Reset"), 
+                           get_dialog("reset_success_msg", "All settings have been reset to default values."))
     
     def on_closing(self):
         """Handle application closing - save settings"""
@@ -523,6 +723,8 @@ class WebPConverter:
     def convert_images(self):
         """Convert images to WebP format"""
         try:
+
+            start_time = time.time()
             total_files = len(self.selected_files)
             converted_count = 0
             failed_files = []
@@ -544,6 +746,7 @@ class WebPConverter:
                 except Exception as e:
                     failed_files.append(f"{os.path.basename(input_file)}: {str(e)}")
                     
+                    
                 # Update progress
                 progress = ((i + 1) / total_files) * 100
                 self.root.after(0, self.update_progress, progress)
@@ -558,7 +761,9 @@ class WebPConverter:
                 message += f"\n\nFailed files:\n" + "\n".join(failed_files[:5])
                 if len(failed_files) > 5:
                     message += f"\n... and {len(failed_files) - 5} more"
-                    
+
+            
+            message += f"\n\nTime taken: {time.time() - start_time:.1f} seconds"
             self.root.after(0, self.show_completion_message, message)
             
         except Exception as e:
@@ -609,9 +814,14 @@ class WebPConverter:
             # Save as WebP
             save_kwargs = {
                 'format': 'WebP',
-                'quality': self.quality.get(),
-                'method': 6  # Better compression
+                'method': self.compression_method.get()  # User-selected compression method
             }
+            
+            # Add lossless or quality setting
+            if self.lossless_compression.get():
+                save_kwargs['lossless'] = True
+            else:
+                save_kwargs['quality'] = self.quality.get()
             
             if self.preserve_metadata.get():
                 # Preserve EXIF data if available
@@ -652,7 +862,7 @@ def main(language=None):
     # Center the fixed-size window
     root.update_idletasks()
     width = 600
-    height = 520
+    height = 480
     
     x = (root.winfo_screenwidth() // 2) - (width // 2)
     y = (root.winfo_screenheight() // 2) - (height // 2)

@@ -17,7 +17,13 @@
     "cancelling_status": "Cancelling conversion...",
     "progress_title": "Progress",
     "select_images_title": "Select Images",
-    "output_settings_title": "Output Settings"
+    "output_settings_title": "Output Settings",
+    "quality_settings": "Quality Settings",
+    "method_settings": "Compression Method",
+    "lossless_settings": "Compression Type",
+    "metadata_settings": "Metadata Settings",
+    "method": "Method:",
+    "lossless_compression": "Lossless compression"
   },
   "menu": {
     "file": "File",
@@ -27,6 +33,7 @@
     "file_exit": "Exit",
     "settings": "Settings",
     "settings_output": "Choose Output Folder...",
+    "settings_conversion": "Conversion Settings...",
     "help": "Help",
     "help_about": "About WebP Converter"
   },
@@ -70,6 +77,18 @@
     "select_files_title": "Select Image Files",
     "select_folder_title": "Select Folder with Images",
     "select_output_title": "Select Output Folder",
+    "settings_title": "Conversion Settings",
+    "quality_desc": "Higher values = better quality, larger files",
+    "method_desc": "0 = Fastest (lower quality), 6 = Best quality (slower)",
+    "lossless_desc": "Perfect quality, larger files. Disables quality setting when enabled.",
+    "metadata_desc": "Keeps original image information (EXIF data, color profiles)",
+    "reset_defaults": "Reset to Defaults",
+    "confirm_reset": "Confirm Reset",
+    "confirm_reset_msg": "Reset all settings to default values?",
+    "reset_success": "Settings Reset",
+    "reset_success_msg": "All settings have been reset to default values.",
+    "settings_footer": "Some settings may not work with large images. Try using higher method or lower quality.",
+    "close": "Close",
     "file_types": [
       ["Image files", "*.jpg *.jpeg *.heic *.HEIC *.JPG *.JPEG"],
       ["JPG files", "*.jpg *.jpeg *.JPG *.JPEG"],

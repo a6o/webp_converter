@@ -17,7 +17,13 @@
     "cancelling_status": "변환 취소 중...",
     "progress_title": "진행률",
     "select_images_title": "이미지 선택",
-    "output_settings_title": "출력 설정"
+    "output_settings_title": "출력 설정",
+    "quality_settings": "품질 설정",
+    "method_settings": "압축 방식",
+    "lossless_settings": "압축 형태",
+    "metadata_settings": "메타데이터 설정",
+    "method": "방식:",
+    "lossless_compression": "무손실 압축"
   },
   "menu": {
     "file": "파일",
@@ -27,6 +33,7 @@
     "file_exit": "종료",
     "settings": "설정",
     "settings_output": "출력 폴더 선택...",
+    "settings_conversion": "변환 설정...",
     "help": "도움말",
     "help_about": "WebP 변환기 정보"
   },
@@ -70,6 +77,18 @@
     "select_files_title": "이미지 파일 선택",
     "select_folder_title": "이미지가 있는 폴더 선택",
     "select_output_title": "출력 폴더 선택",
+    "settings_title": "변환 설정",
+    "quality_desc": "높은 값 = 더 좋은 품질, 더 큰 파일 크기",
+    "method_desc": "0 = 가장 빠름 (낮은 품질), 6 = 최고 품질 (느림)",
+    "lossless_desc": "완벽한 품질, 더 큰 파일 크기. 활성화 시 품질 설정이 비활성화됩니다.",
+    "metadata_desc": "원본 이미지 정보 보존 (EXIF 데이터, 색상 프로필)",
+    "reset_defaults": "기본값으로 초기화",
+    "confirm_reset": "초기화 확인",
+    "confirm_reset_msg": "모든 설정을 기본값으로 초기화하시겠습니까?",
+    "reset_success": "설정 초기화됨",
+    "reset_success_msg": "모든 설정이 기본값으로 초기화되었습니다.",
+    "settings_footer": "크기가 큰 사진은 특정 설정에서 제대로 작동하지 않을 수 있습니다. 더 높은 방식이나 낮은 품질을 사용해보세요.",
+    "close": "닫기",
     "file_types": [
       ["이미지 파일", "*.jpg *.jpeg *.heic *.HEIC *.JPG *.JPEG"],
       ["JPG 파일", "*.jpg *.jpeg *.JPG *.JPEG"],
