@@ -29,3 +29,6 @@ build.bat
 
 # Find your executable in dist/WebP_Converter.exe
 ```
+
+## Version
+- v1.0.2 - Enhanced settings dialog, faster conversion

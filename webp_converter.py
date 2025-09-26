@@ -862,7 +862,7 @@ def main(language=None):
     # Center the fixed-size window
     root.update_idletasks()
     width = 600
-    height = 480
+    height = 450
     
     x = (root.winfo_screenwidth() // 2) - (width // 2)
     y = (root.winfo_screenheight() // 2) - (height // 2)

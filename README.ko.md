@@ -32,3 +32,6 @@ build.bat
 
 # dist/WebP_Converter.exe에서 실행 파일 확인
 ```
+
+## 버전
+- v1.0.2 - 향상된 설정 대화상자, 빠른 변환
