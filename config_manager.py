@@ -178,6 +178,30 @@ class WebPConverterConfig(ConfigManager):
     def load_lossless(self):
         """Load lossless compression setting, default to False (lossy)"""
         return self.load_bool_setting("LosslessCompression", False)
+    
+    def save_output_format(self, output_format):
+        """Save output format setting (webp or jpeg)"""
+        return self.save_setting("OutputFormat", output_format)
+    
+    def load_output_format(self):
+        """Load output format setting, default to webp"""
+        return self.load_setting("OutputFormat", "webp")
+    
+    def save_white_border(self, white_border):
+        """Save white border setting"""
+        return self.save_bool_setting("WhiteBorder", white_border)
+    
+    def load_white_border(self):
+        """Load white border setting, default to False"""
+        return self.load_bool_setting("WhiteBorder", False)
+    
+    def save_jpeg_quality(self, jpeg_quality):
+        """Save JPEG quality setting"""
+        return self.save_int_setting("JpegQuality", jpeg_quality)
+    
+    def load_jpeg_quality(self):
+        """Load JPEG quality setting, default to 95"""
+        return self.load_int_setting("JpegQuality", 95)
 
 
 # Global instance for easy access

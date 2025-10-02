@@ -38,6 +38,9 @@ class WebPConverter:
         saved_output = config.load_output_folder()
         saved_method = config.load_method()
         saved_lossless = config.load_lossless()
+        saved_output_format = config.load_output_format()
+        saved_white_border = config.load_white_border()
+        saved_jpeg_quality = config.load_jpeg_quality()
         
         self.selected_files = []
         self.output_folder = tk.StringVar(value=saved_output)
@@ -45,6 +48,9 @@ class WebPConverter:
         self.preserve_metadata = tk.BooleanVar(value=saved_metadata)
         self.compression_method = tk.IntVar(value=saved_method)
         self.lossless_compression = tk.BooleanVar(value=saved_lossless)
+        self.output_format = tk.StringVar(value=saved_output_format)
+        self.white_border = tk.BooleanVar(value=saved_white_border)
+        self.jpeg_quality = tk.IntVar(value=saved_jpeg_quality)
         self.conversion_running = False
         self.conversion_cancelled = False  # Flag to track if conversion was cancelled
         self.source_folder = None  # Track source folder for preserving structure
@@ -143,7 +149,7 @@ class WebPConverter:
         
         # Convert button frame to hold both convert and cancel buttons
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=4, column=0, columnspan=3, pady=(0, 10))
+        button_frame.grid(row=3, column=0, columnspan=3, pady=(0, 10))
         button_frame.columnconfigure(0, weight=1)
         button_frame.columnconfigure(1, weight=1)
         
@@ -159,6 +165,9 @@ class WebPConverter:
         
         # Set default output folder to current directory
         self.output_folder.set(os.getcwd())
+        
+        # Update convert button text based on output format
+        self.update_convert_button_text()
         
         # Show/hide drag-drop hint based on file list
         self.update_drag_drop_hint()
@@ -220,7 +229,7 @@ class WebPConverter:
         # Create dialog window
         dialog = tk.Toplevel(self.root)
         dialog.title(get_dialog("settings_title", "Conversion Settings"))
-        dialog.geometry("450x580")
+        dialog.geometry("450x700")
         dialog.resizable(False, False)
         dialog.transient(self.root)
         dialog.grab_set()
@@ -228,8 +237,8 @@ class WebPConverter:
         # Center the dialog
         dialog.update_idletasks()
         x = (dialog.winfo_screenwidth() // 2) - (450 // 2)
-        y = (dialog.winfo_screenheight() // 2) - (580 // 2)
-        dialog.geometry(f"450x580+{x}+{y}")
+        y = (dialog.winfo_screenheight() // 2) - (700 // 2)
+        dialog.geometry(f"450x700+{x}+{y}")
         
         # Main frame
         main_frame = ttk.Frame(dialog, padding="20")
@@ -237,30 +246,43 @@ class WebPConverter:
         dialog.columnconfigure(0, weight=1)
         dialog.rowconfigure(0, weight=1)
         
-        # Quality section
-        quality_frame = ttk.LabelFrame(main_frame, text=get_main("quality_settings", "Quality Settings"), padding="15")
-        quality_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
-        quality_frame.columnconfigure(1, weight=1)
         
-        # Quality label and scale
-        quality_label = ttk.Label(quality_frame, text=get_main("quality", "Quality:"))
+        
+        
+        # Output Format section
+        format_frame = ttk.LabelFrame(main_frame, text=get_main("format_settings", "Output Format"), padding="15")
+        format_frame.grid(row=0, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        
+        # WebP radio button
+        webp_radio = ttk.Radiobutton(format_frame, 
+                                    text=get_main("format_webp", "Save as WebP"),
+                                    variable=self.output_format, 
+                                    value="webp",
+                                    command=self.on_format_changed)
+        webp_radio.grid(row=0, column=0, sticky=tk.W)
+        
+        # WebP-specific settings frame (nested under WebP option)
+        self.webp_settings_frame = ttk.LabelFrame(format_frame, text="WebP Settings", padding="10")
+        self.webp_settings_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(10, 0), padx=(20, 0))
+        format_frame.columnconfigure(0, weight=1)
+        self.webp_settings_frame.columnconfigure(1, weight=1)
+        
+        # Move quality controls to WebP frame
+        quality_label = ttk.Label(self.webp_settings_frame, text=get_main("quality", "Quality:"))
         quality_label.grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
         
-        # Quality scale frame
-        scale_frame = ttk.Frame(quality_frame)
-        scale_frame.grid(row=0, column=1, sticky=(tk.W, tk.E))
-        scale_frame.columnconfigure(0, weight=1)
+        quality_scale_frame = ttk.Frame(self.webp_settings_frame)
+        quality_scale_frame.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        quality_scale_frame.columnconfigure(0, weight=1)
         
-        # Create new quality scale for dialog
-        quality_scale = ttk.Scale(scale_frame, from_=1, to=100, 
+        quality_scale = ttk.Scale(quality_scale_frame, from_=1, to=100, 
                                  variable=self.quality, orient="horizontal")
         quality_scale.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
         
-        # Quality value label
-        quality_value_label = ttk.Label(scale_frame, text=str(self.quality.get()), width=3)
+        quality_value_label = ttk.Label(quality_scale_frame, text=str(self.quality.get()), width=3)
         quality_value_label.grid(row=0, column=1)
         
-        # Update function for the dialog
+        # Update function for quality
         def update_quality_display(value=None):
             quality_value = int(float(self.quality.get()))
             quality_value_label.config(text=str(quality_value))
@@ -268,37 +290,22 @@ class WebPConverter:
         
         quality_scale.configure(command=update_quality_display)
         
-        # Quality description
-        quality_desc = ttk.Label(quality_frame, 
-                                text=get_dialog("quality_desc", "Higher values = better quality, larger files"),
-                                font=("TkDefaultFont", 8),
-                                foreground="gray")
-        quality_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
+        # Move method controls to WebP frame
+        method_label = ttk.Label(self.webp_settings_frame, text=get_main("method", "Method:"))
+        method_label.grid(row=1, column=0, sticky=tk.W, padx=(0, 10), pady=(10, 0))
         
-        # Compression method section
-        method_frame = ttk.LabelFrame(main_frame, text=get_main("method_settings", "Compression Method"), padding="15")
-        method_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
-        method_frame.columnconfigure(1, weight=1)
-        
-        # Method label and scale
-        method_label = ttk.Label(method_frame, text=get_main("method", "Method:"))
-        method_label.grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
-        
-        # Method scale frame
-        method_scale_frame = ttk.Frame(method_frame)
-        method_scale_frame.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        method_scale_frame = ttk.Frame(self.webp_settings_frame)
+        method_scale_frame.grid(row=1, column=1, sticky=(tk.W, tk.E), pady=(10, 0))
         method_scale_frame.columnconfigure(0, weight=1)
         
-        # Create method scale for dialog
         method_scale = ttk.Scale(method_scale_frame, from_=0, to=6, 
                                variable=self.compression_method, orient="horizontal")
         method_scale.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
         
-        # Method value label
         method_value_label = ttk.Label(method_scale_frame, text=str(self.compression_method.get()), width=3)
         method_value_label.grid(row=0, column=1)
         
-        # Update function for the method dialog
+        # Update function for method
         def update_method_display(value=None):
             method_value = int(float(self.compression_method.get()))
             method_value_label.config(text=str(method_value))
@@ -306,52 +313,85 @@ class WebPConverter:
         
         method_scale.configure(command=update_method_display)
         
-        # Method description
-        method_desc = ttk.Label(method_frame, 
-                               text=get_dialog("method_desc", "0 = Fastest (lower quality), 6 = Best quality (slower)"),
-                               font=("TkDefaultFont", 8),
-                               foreground="gray")
-        method_desc.grid(row=1, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
-        
-        # Lossless compression section
-        lossless_frame = ttk.LabelFrame(main_frame, text=get_main("lossless_settings", "Compression Type"), padding="15")
-        lossless_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
-        
-        # Lossless checkbox
-        lossless_checkbox = ttk.Checkbutton(lossless_frame, 
+        # Move lossless checkbox to WebP frame
+        lossless_checkbox = ttk.Checkbutton(self.webp_settings_frame, 
                                            text=get_main("lossless_compression", "Lossless compression"),
                                            variable=self.lossless_compression, 
                                            command=self.on_lossless_changed)
-        lossless_checkbox.grid(row=0, column=0, sticky=tk.W)
+        lossless_checkbox.grid(row=2, column=0, columnspan=2, sticky=tk.W, pady=(10, 0))
         
-        # Lossless description
-        lossless_desc = ttk.Label(lossless_frame,
-                                 text=get_dialog("lossless_desc", "Perfect quality, larger files. Disables quality setting when enabled."),
-                                 font=("TkDefaultFont", 8),
-                                 foreground="gray")
-        lossless_desc.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
-        
-        # Metadata section
-        metadata_frame = ttk.LabelFrame(main_frame, text=get_main("metadata_settings", "Metadata Settings"), padding="15")
-        metadata_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
-        
-        # Metadata checkbox
-        metadata_checkbox = ttk.Checkbutton(metadata_frame, 
+        # Move metadata checkbox to WebP frame
+        metadata_checkbox = ttk.Checkbutton(self.webp_settings_frame, 
                                            text=get_main("preserve_metadata", "Preserve metadata"),
                                            variable=self.preserve_metadata, 
                                            command=self.on_metadata_changed)
-        metadata_checkbox.grid(row=0, column=0, sticky=tk.W)
+        metadata_checkbox.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=(5, 0))
         
-        # Metadata description
-        metadata_desc = ttk.Label(metadata_frame,
-                                 text=get_dialog("metadata_desc", "Keeps original image information (EXIF data, color profiles)"),
-                                 font=("TkDefaultFont", 8),
-                                 foreground="gray")
-        metadata_desc.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
+        # JPEG radio button
+        jpeg_radio = ttk.Radiobutton(format_frame, 
+                                    text=get_main("format_jpeg", "Save as JPEG"),
+                                    variable=self.output_format, 
+                                    value="jpeg",
+                                    command=self.on_format_changed)
+        jpeg_radio.grid(row=2, column=0, sticky=tk.W, pady=(10, 0))
+        
+        # JPEG-specific settings frame (nested under JPEG option)
+        self.jpeg_settings_frame = ttk.LabelFrame(format_frame, text="JPEG Settings", padding="10")
+        self.jpeg_settings_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(10, 0), padx=(20, 0))
+        format_frame.columnconfigure(0, weight=1)
+        self.jpeg_settings_frame.columnconfigure(1, weight=1)
+        
+        # JPEG quality controls
+        jpeg_quality_label = ttk.Label(self.jpeg_settings_frame, text=get_main("quality", "Quality:"))
+        jpeg_quality_label.grid(row=0, column=0, sticky=tk.W, padx=(0, 10))
+        
+        jpeg_quality_scale_frame = ttk.Frame(self.jpeg_settings_frame)
+        jpeg_quality_scale_frame.grid(row=0, column=1, sticky=(tk.W, tk.E))
+        jpeg_quality_scale_frame.columnconfigure(0, weight=1)
+        
+        jpeg_quality_scale = ttk.Scale(jpeg_quality_scale_frame, from_=0, to=95, 
+                                      variable=self.jpeg_quality, orient="horizontal")
+        jpeg_quality_scale.grid(row=0, column=0, sticky=(tk.W, tk.E), padx=(0, 10))
+        
+        jpeg_quality_value_label = ttk.Label(jpeg_quality_scale_frame, text=str(self.jpeg_quality.get()), width=3)
+        jpeg_quality_value_label.grid(row=0, column=1)
+        
+        # Update function for JPEG quality
+        def update_jpeg_quality_display(value=None):
+            jpeg_quality_value = int(float(self.jpeg_quality.get()))
+            jpeg_quality_value_label.config(text=str(jpeg_quality_value))
+            config.save_jpeg_quality(jpeg_quality_value)
+        
+        jpeg_quality_scale.configure(command=update_jpeg_quality_display)
+        
+        # Format description
+        format_desc = ttk.Label(format_frame,
+                               text=get_dialog("format_desc", "WebP: Smaller files, better compression. JPEG: Universal compatibility."),
+                               font=("TkDefaultFont", 8),
+                               foreground="gray")
+        format_desc.grid(row=4, column=0, sticky=tk.W, pady=(10, 0))
+        
+        # White Border section
+        border_frame = ttk.LabelFrame(main_frame, text=get_main("border_settings", "Border Settings"), padding="15")
+        border_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        
+        # White border checkbox
+        border_checkbox = ttk.Checkbutton(border_frame, 
+                                         text=get_main("white_border", "Add white border"),
+                                         variable=self.white_border, 
+                                         command=self.on_border_changed)
+        border_checkbox.grid(row=0, column=0, sticky=tk.W)
+        
+        # Border description
+        border_desc = ttk.Label(border_frame,
+                               text=get_dialog("border_desc", "Creates 1440x1440 square with white border (long side = 1200px)"),
+                               font=("TkDefaultFont", 8),
+                               foreground="gray")
+        border_desc.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
         
         # Footer section with informational text
         footer_frame = ttk.Frame(main_frame)
-        footer_frame.grid(row=4, column=0, sticky=(tk.W, tk.E), pady=(20, 10))
+        footer_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(20, 10))
         footer_frame.columnconfigure(0, weight=1)
         
         # Add a separator line
@@ -372,7 +412,7 @@ class WebPConverter:
         
         # Button frame
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=5, column=0, sticky=(tk.W, tk.E))
+        button_frame.grid(row=3, column=0, sticky=(tk.W, tk.E))
         button_frame.columnconfigure(0, weight=1)
         button_frame.columnconfigure(1, weight=1)
         
@@ -380,13 +420,17 @@ class WebPConverter:
         reset_btn = ttk.Button(button_frame, text=get_dialog("reset_defaults", "Reset to Defaults"), 
                               command=lambda: self.reset_to_defaults(dialog, quality_scale, quality_value_label, 
                                                                     method_scale, method_value_label, 
-                                                                    lossless_checkbox, metadata_checkbox))
+                                                                    lossless_checkbox, metadata_checkbox, 
+                                                                    webp_radio, jpeg_radio, border_checkbox))
         reset_btn.grid(row=0, column=0, padx=(0, 5), pady=(10, 0), sticky=(tk.W, tk.E))
         
         # Close button
         close_btn = ttk.Button(button_frame, text=get_dialog("close", "Close"), 
                               command=dialog.destroy)
         close_btn.grid(row=0, column=1, padx=(5, 0), pady=(10, 0), sticky=(tk.W, tk.E))
+        
+        # Initialize WebP settings state based on current selection
+        self.update_webp_settings_state()
         
         # Focus the dialog
         dialog.focus_set()
@@ -423,7 +467,8 @@ class WebPConverter:
         if hasattr(self, 'browse_btn'):
             self.browse_btn.config(text=get_main("browse", "Browse"))
         if hasattr(self, 'convert_button'):
-            self.convert_button.config(text=get_main("convert_button", "Convert to WebP"))
+            # Update convert button text based on Instagram mode
+            self.update_convert_button_text()
         if hasattr(self, 'status_label'):
             self.status_label.config(text=get_main("ready_status", "Ready to convert images"))
         if hasattr(self, 'progress_frame'):
@@ -554,7 +599,112 @@ class WebPConverter:
         # Save lossless preference
         config.save_lossless(self.lossless_compression.get())
     
-    def reset_to_defaults(self, dialog, quality_scale, quality_value_label, method_scale, method_value_label, lossless_checkbox, metadata_checkbox):
+    def on_format_changed(self):
+        """Handle output format radio button changes"""
+        # Save output format preference
+        config.save_output_format(self.output_format.get())
+        # Update convert button text to reflect output format
+        self.update_convert_button_text()
+        # Enable/disable WebP-specific settings
+        self.update_webp_settings_state()
+    
+    def on_border_changed(self):
+        """Handle white border checkbox changes"""
+        # Save white border preference
+        config.save_white_border(self.white_border.get())
+    
+    def apply_white_border(self, img):
+        """Apply white border: resize to fit 1440x1440 with long side = 1200px"""
+        # Target dimensions
+        canvas_size = 1440
+        max_image_size = 1200
+        
+        # Get current image dimensions
+        original_width, original_height = img.size
+        
+        # Calculate scaling factor to make longest side = 1200
+        if original_width >= original_height:
+            # Width is longer or equal
+            scale_factor = max_image_size / original_width
+        else:
+            # Height is longer
+            scale_factor = max_image_size / original_height
+        
+        # Calculate new dimensions
+        new_width = int(original_width * scale_factor)
+        new_height = int(original_height * scale_factor)
+        
+        # Resize the image
+        resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        
+        # Create white canvas
+        canvas = Image.new('RGB', (canvas_size, canvas_size), 'white')
+        
+        # Calculate position to center the image
+        x_offset = (canvas_size - new_width) // 2
+        y_offset = (canvas_size - new_height) // 2
+        
+        # Paste the resized image onto the canvas
+        if resized_img.mode == 'RGBA':
+            # Handle transparency
+            canvas.paste(resized_img, (x_offset, y_offset), resized_img)
+        else:
+            canvas.paste(resized_img, (x_offset, y_offset))
+        
+        return canvas
+    
+    def update_convert_button_text(self):
+        """Update convert button text based on output format"""
+        if self.output_format.get() == "jpeg":
+            button_text = get_main("convert_button_jpg", "Convert to JPG")
+        else:
+            button_text = get_main("convert_button", "Convert to WebP")
+        
+        if hasattr(self, 'convert_button'):
+            self.convert_button.config(text=button_text)
+    
+    def update_webp_settings_state(self):
+        """Enable/disable format-specific settings based on output format"""
+        output_format = self.output_format.get()
+        is_webp = output_format == "webp"
+        is_jpeg = output_format == "jpeg"
+        
+        # Helper function to update widget state
+        def update_widget_state(widget, enabled):
+            widget_class = widget.winfo_class()
+            state = 'normal' if enabled else 'disabled'
+            # Only apply state to widgets that support it
+            if widget_class in ('TScale', 'TCheckbutton', 'Scale', 'Checkbutton'):
+                try:
+                    widget.config(state=state)
+                except:
+                    pass  # Some widgets might not support state
+            elif widget_class in ('TLabel', 'Label'):
+                # For labels, we can change the foreground color to simulate disabled state
+                try:
+                    if enabled:
+                        widget.config(foreground='black')
+                    else:
+                        widget.config(foreground='gray')
+                except:
+                    pass
+            
+            # Handle nested widgets
+            if hasattr(widget, 'winfo_children'):
+                for child in widget.winfo_children():
+                    update_widget_state(child, enabled)
+        
+        # Update WebP settings frame
+        if hasattr(self, 'webp_settings_frame'):
+            for child in self.webp_settings_frame.winfo_children():
+                update_widget_state(child, is_webp)
+        
+        # Update JPEG settings frame
+        if hasattr(self, 'jpeg_settings_frame'):
+            for child in self.jpeg_settings_frame.winfo_children():
+                update_widget_state(child, is_jpeg)
+    
+    def reset_to_defaults(self, dialog, quality_scale, quality_value_label, method_scale, method_value_label, lossless_checkbox, metadata_checkbox, webp_radio, jpeg_radio, border_checkbox):
         """Reset all settings to their default values"""
         import tkinter.messagebox as msgbox
         
@@ -566,6 +716,9 @@ class WebPConverter:
             default_method = 0
             default_lossless = False
             default_metadata = True
+            default_format = "webp"
+            default_border = False
+            default_jpeg_quality = 95
             
             # Update UI elements
             self.quality.set(default_quality)
@@ -576,12 +729,22 @@ class WebPConverter:
             
             self.lossless_compression.set(default_lossless)
             self.preserve_metadata.set(default_metadata)
+            self.output_format.set(default_format)
+            self.white_border.set(default_border)
+            self.jpeg_quality.set(default_jpeg_quality)
+            
+            # Update convert button text and settings state
+            self.update_convert_button_text()
+            self.update_webp_settings_state()
             
             # Save to config
             config.save_quality(default_quality)
             config.save_method(default_method)
             config.save_lossless(default_lossless)
             config.save_preserve_metadata(default_metadata)
+            config.save_output_format(default_format)
+            config.save_white_border(default_border)
+            config.save_jpeg_quality(default_jpeg_quality)
             
             # Show success message
             msgbox.showinfo(get_dialog("reset_success", "Settings Reset"), 
@@ -785,42 +948,64 @@ class WebPConverter:
                     img = img.convert('RGB')
             elif img.mode not in ('RGB', 'RGBA'):
                 img = img.convert('RGB')
+            
+            # Apply white border if enabled
+            if self.white_border.get():
+                img = self.apply_white_border(img)
                 
             # Generate output path - preserve folder structure if source folder exists
             input_path = Path(input_file)
             output_base = Path(self.output_folder.get())
+            
+            # Determine output format and extension
+            if self.output_format.get() == "jpeg":
+                output_extension = '.jpg'
+            else:
+                output_extension = '.webp'
             
             if self.source_folder:
                 # Calculate relative path from source folder
                 source_path = Path(self.source_folder)
                 try:
                     relative_path = input_path.relative_to(source_path)
-                    # Change extension to .webp
-                    output_filename = relative_path.stem + '.webp'
+                    # Change extension based on Instagram mode
+                    output_filename = relative_path.stem + output_extension
                     output_path = output_base / relative_path.parent / output_filename
                     
                     # Create subdirectories if they don't exist
                     output_path.parent.mkdir(parents=True, exist_ok=True)
                 except ValueError:
                     # File is not within source folder, use flat structure
-                    output_filename = input_path.stem + '.webp'
+                    output_filename = input_path.stem + output_extension
                     output_path = output_base / output_filename
             else:
                 # No source folder, use flat structure
-                output_filename = input_path.stem + '.webp'
+                output_filename = input_path.stem + output_extension
                 output_path = output_base / output_filename
             
-            # Save as WebP
-            save_kwargs = {
-                'format': 'WebP',
-                'method': self.compression_method.get()  # User-selected compression method
-            }
-            
-            # Add lossless or quality setting
-            if self.lossless_compression.get():
-                save_kwargs['lossless'] = True
+            # Save with appropriate format
+            if self.output_format.get() == "jpeg":
+                # JPEG mode: Save with user-selected quality
+                save_kwargs = {
+                    'format': 'JPEG',
+                    'quality': self.jpeg_quality.get(),  # User-selected JPEG quality
+                    'optimize': True
+                }
+                # Ensure image is in RGB mode for JPEG
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    img = img.convert('RGB')
             else:
-                save_kwargs['quality'] = self.quality.get()
+                # WebP mode: Save as WebP with user settings
+                save_kwargs = {
+                    'format': 'WebP',
+                    'method': self.compression_method.get()  # User-selected compression method
+                }
+                
+                # Add lossless or quality setting
+                if self.lossless_compression.get():
+                    save_kwargs['lossless'] = True
+                else:
+                    save_kwargs['quality'] = self.quality.get()
             
             if self.preserve_metadata.get():
                 # Preserve EXIF data if available
