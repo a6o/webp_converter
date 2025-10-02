@@ -51,12 +51,23 @@ class WebPConverter:
         self.output_format = tk.StringVar(value=saved_output_format)
         self.white_border = tk.BooleanVar(value=saved_white_border)
         self.jpeg_quality = tk.IntVar(value=saved_jpeg_quality)
+        
+        # Image sizing options
+        saved_resize_mode = config.load_resize_mode()
+        saved_long_edge = config.load_long_edge()
+        self.resize_mode = tk.StringVar(value=saved_resize_mode)  # "same_size" or "long_edge"
+        self.long_edge_size = tk.StringVar(value=str(saved_long_edge))
+        
+        # Same location option
+        saved_same_location = config.load_same_location()
+        self.same_location = tk.BooleanVar(value=saved_same_location)
+        
         self.conversion_running = False
         self.conversion_cancelled = False  # Flag to track if conversion was cancelled
         self.source_folder = None  # Track source folder for preserving structure
         
         # Set fixed window size
-        self.root.geometry("600x450")
+        self.root.geometry("600x500")
         
         self.setup_ui()
         self.setup_menu()
@@ -134,6 +145,13 @@ class WebPConverter:
                   command=self.select_output_folder)
         self.browse_btn.grid(row=0, column=2)
         
+        # Same location checkbox
+        self.same_location_checkbox = ttk.Checkbutton(self.output_frame, 
+                                                     text=get_main("same_location", "Save as same location"),
+                                                     variable=self.same_location, 
+                                                     command=self.on_same_location_changed)
+        self.same_location_checkbox.grid(row=1, column=0, columnspan=3, sticky=tk.W, pady=(5, 0))
+        
         # Progress section
         self.progress_frame = ttk.LabelFrame(main_frame, text=get_main("progress_title", "Progress"), padding="10")
         self.progress_frame.grid(row=3, column=0, columnspan=3, sticky=(tk.W, tk.E), pady=(0, 10))
@@ -149,7 +167,7 @@ class WebPConverter:
         
         # Convert button frame to hold both convert and cancel buttons
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=3, column=0, columnspan=3, pady=(0, 10))
+        button_frame.grid(row=4, column=0, columnspan=3, pady=(0, 10))
         button_frame.columnconfigure(0, weight=1)
         button_frame.columnconfigure(1, weight=1)
         
@@ -168,6 +186,9 @@ class WebPConverter:
         
         # Update convert button text based on output format
         self.update_convert_button_text()
+        
+        # Update output folder controls state based on same location setting
+        self.update_output_folder_state()
         
         # Show/hide drag-drop hint based on file list
         self.update_drag_drop_hint()
@@ -229,7 +250,7 @@ class WebPConverter:
         # Create dialog window
         dialog = tk.Toplevel(self.root)
         dialog.title(get_dialog("settings_title", "Conversion Settings"))
-        dialog.geometry("450x700")
+        dialog.geometry("450x800")
         dialog.resizable(False, False)
         dialog.transient(self.root)
         dialog.grab_set()
@@ -237,8 +258,8 @@ class WebPConverter:
         # Center the dialog
         dialog.update_idletasks()
         x = (dialog.winfo_screenwidth() // 2) - (450 // 2)
-        y = (dialog.winfo_screenheight() // 2) - (700 // 2)
-        dialog.geometry(f"450x700+{x}+{y}")
+        y = (dialog.winfo_screenheight() // 2) - (800 // 2)
+        dialog.geometry(f"450x800+{x}+{y}")
         
         # Main frame
         main_frame = ttk.Frame(dialog, padding="20")
@@ -389,9 +410,54 @@ class WebPConverter:
                                foreground="gray")
         border_desc.grid(row=1, column=0, sticky=tk.W, pady=(5, 0))
         
+        # Image Sizing section
+        sizing_frame = ttk.LabelFrame(main_frame, text=get_main("sizing_settings", "Image Sizing"), padding="15")
+        sizing_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(0, 20))
+        
+        # Same size radio button
+        self.same_size_radio = ttk.Radiobutton(sizing_frame, 
+                                         text=get_main("same_size", "Keep original size"),
+                                         variable=self.resize_mode, 
+                                         value="same_size",
+                                         command=self.on_resize_mode_changed)
+        self.same_size_radio.grid(row=0, column=0, sticky=tk.W)
+        
+        # Long edge radio button with text input
+        self.long_edge_frame = ttk.Frame(sizing_frame)
+        self.long_edge_frame.grid(row=1, column=0, sticky=(tk.W, tk.E), pady=(10, 0))
+        sizing_frame.columnconfigure(0, weight=1)
+        
+        self.long_edge_radio = ttk.Radiobutton(self.long_edge_frame, 
+                                         text=get_main("set_long_edge", "Set long edge to:"),
+                                         variable=self.resize_mode, 
+                                         value="long_edge",
+                                         command=self.on_resize_mode_changed)
+        self.long_edge_radio.grid(row=0, column=0, sticky=tk.W)
+        
+        # Text input for long edge size
+        self.long_edge_entry = ttk.Entry(self.long_edge_frame, 
+                                        textvariable=self.long_edge_size,
+                                        width=8)
+        self.long_edge_entry.grid(row=0, column=1, padx=(10, 5), sticky=tk.W)
+        self.long_edge_entry.bind('<KeyRelease>', self.on_long_edge_changed)
+        
+        # "px" label
+        self.px_label = ttk.Label(self.long_edge_frame, text="px")
+        self.px_label.grid(row=0, column=2, sticky=tk.W)
+        
+        # Sizing description
+        self.sizing_desc = ttk.Label(sizing_frame,
+                               text=get_dialog("sizing_desc", "Resize images while maintaining aspect ratio"),
+                               font=("TkDefaultFont", 8),
+                               foreground="gray")
+        self.sizing_desc.grid(row=2, column=0, sticky=tk.W, pady=(5, 0))
+        
+        # Store reference to sizing frame for enable/disable functionality
+        self.sizing_frame = sizing_frame
+        
         # Footer section with informational text
         footer_frame = ttk.Frame(main_frame)
-        footer_frame.grid(row=2, column=0, sticky=(tk.W, tk.E), pady=(20, 10))
+        footer_frame.grid(row=3, column=0, sticky=(tk.W, tk.E), pady=(20, 10))
         footer_frame.columnconfigure(0, weight=1)
         
         # Add a separator line
@@ -412,7 +478,7 @@ class WebPConverter:
         
         # Button frame
         button_frame = ttk.Frame(main_frame)
-        button_frame.grid(row=3, column=0, sticky=(tk.W, tk.E))
+        button_frame.grid(row=4, column=0, sticky=(tk.W, tk.E))
         button_frame.columnconfigure(0, weight=1)
         button_frame.columnconfigure(1, weight=1)
         
@@ -431,6 +497,9 @@ class WebPConverter:
         
         # Initialize WebP settings state based on current selection
         self.update_webp_settings_state()
+        
+        # Initialize sizing settings state based on white border setting
+        self.update_sizing_settings_state()
         
         # Focus the dialog
         dialog.focus_set()
@@ -466,6 +535,8 @@ class WebPConverter:
             self.output_label.config(text=get_main("output_folder", "Output Folder:"))
         if hasattr(self, 'browse_btn'):
             self.browse_btn.config(text=get_main("browse", "Browse"))
+        if hasattr(self, 'same_location_checkbox'):
+            self.same_location_checkbox.config(text=get_main("same_location", "Save as same location"))
         if hasattr(self, 'convert_button'):
             # Update convert button text based on Instagram mode
             self.update_convert_button_text()
@@ -612,6 +683,50 @@ class WebPConverter:
         """Handle white border checkbox changes"""
         # Save white border preference
         config.save_white_border(self.white_border.get())
+        # Update sizing settings state based on border setting
+        self.update_sizing_settings_state()
+    
+    def on_resize_mode_changed(self):
+        """Handle resize mode radio button changes"""
+        # Save resize mode preference
+        config.save_resize_mode(self.resize_mode.get())
+    
+    def on_long_edge_changed(self, event=None):
+        """Handle long edge size text input changes"""
+        try:
+            # Validate input is a positive integer
+            size_str = self.long_edge_size.get().strip()
+            if size_str and size_str.isdigit():
+                size = int(size_str)
+                if size > 0:
+                    config.save_long_edge(size)
+        except (ValueError, AttributeError):
+            # Invalid input, don't save
+            pass
+    
+    def on_same_location_changed(self):
+        """Handle same location checkbox changes"""
+        # Save same location preference
+        config.save_same_location(self.same_location.get())
+        # Update output folder controls state
+        self.update_output_folder_state()
+    
+    def update_output_folder_state(self):
+        """Enable/disable output folder controls based on same location setting"""
+        same_location_enabled = self.same_location.get()
+        folder_controls_enabled = not same_location_enabled
+        
+        # Enable/disable output folder controls
+        if hasattr(self, 'output_entry'):
+            self.output_entry.config(state='normal' if folder_controls_enabled else 'disabled')
+        if hasattr(self, 'browse_btn'):
+            self.browse_btn.config(state='normal' if folder_controls_enabled else 'disabled')
+        if hasattr(self, 'output_label'):
+            # Change label color to indicate disabled state
+            if folder_controls_enabled:
+                self.output_label.config(foreground='black')
+            else:
+                self.output_label.config(foreground='gray')
     
     def apply_white_border(self, img):
         """Apply white border: resize to fit 1440x1440 with long side = 1200px"""
@@ -652,6 +767,53 @@ class WebPConverter:
             canvas.paste(resized_img, (x_offset, y_offset))
         
         return canvas
+    
+    def apply_resize(self, img):
+        """Apply resize based on user settings"""
+        if self.resize_mode.get() == "long_edge":
+            try:
+                target_size = int(self.long_edge_size.get())
+                if target_size > 0:
+                    # Get current dimensions
+                    width, height = img.size
+                    
+                    # Calculate new dimensions maintaining aspect ratio
+                    if width > height:
+                        # Landscape: width is the long edge
+                        new_width = target_size
+                        new_height = int(height * target_size / width)
+                    else:
+                        # Portrait or square: height is the long edge
+                        new_height = target_size
+                        new_width = int(width * target_size / height)
+                    
+                    # Resize the image
+                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            except (ValueError, AttributeError):
+                # Invalid size, keep original
+                pass
+        
+        return img
+    
+    def get_unique_filename(self, file_path):
+        """Generate a unique filename if the file already exists"""
+        path = Path(file_path)
+        
+        if not path.exists():
+            return file_path
+        
+        # File exists, generate unique name
+        base_name = path.stem
+        extension = path.suffix
+        parent_dir = path.parent
+        counter = 1
+        
+        while True:
+            new_name = f"{base_name} ({counter}){extension}"
+            new_path = parent_dir / new_name
+            if not new_path.exists():
+                return str(new_path)
+            counter += 1
     
     def update_convert_button_text(self):
         """Update convert button text based on output format"""
@@ -704,6 +866,44 @@ class WebPConverter:
             for child in self.jpeg_settings_frame.winfo_children():
                 update_widget_state(child, is_jpeg)
     
+    def update_sizing_settings_state(self):
+        """Enable/disable sizing settings based on white border setting"""
+        # If white border is enabled, disable sizing settings since border has fixed sizing
+        white_border_enabled = self.white_border.get()
+        sizing_enabled = not white_border_enabled
+        
+        # Helper function to update widget state
+        def update_widget_state(widget, enabled):
+            widget_class = widget.winfo_class()
+            state = 'normal' if enabled else 'disabled'
+            # Only apply state to widgets that support it
+            if widget_class in ('TScale', 'TCheckbutton', 'TRadiobutton', 'TEntry', 'Scale', 'Checkbutton', 'Radiobutton', 'Entry'):
+                try:
+                    widget.config(state=state)
+                except:
+                    pass  # Some widgets might not support state
+            elif widget_class in ('TLabel', 'Label'):
+                # For labels, change foreground color to simulate disabled state
+                try:
+                    if enabled:
+                        widget.config(foreground='black')
+                    else:
+                        widget.config(foreground='gray')
+                except:
+                    pass
+        
+        # Update sizing frame widgets if they exist
+        if hasattr(self, 'same_size_radio'):
+            update_widget_state(self.same_size_radio, sizing_enabled)
+        if hasattr(self, 'long_edge_radio'):
+            update_widget_state(self.long_edge_radio, sizing_enabled)
+        if hasattr(self, 'long_edge_entry'):
+            update_widget_state(self.long_edge_entry, sizing_enabled)
+        if hasattr(self, 'px_label'):
+            update_widget_state(self.px_label, sizing_enabled)
+        if hasattr(self, 'sizing_desc'):
+            update_widget_state(self.sizing_desc, sizing_enabled)
+    
     def reset_to_defaults(self, dialog, quality_scale, quality_value_label, method_scale, method_value_label, lossless_checkbox, metadata_checkbox, webp_radio, jpeg_radio, border_checkbox):
         """Reset all settings to their default values"""
         import tkinter.messagebox as msgbox
@@ -719,6 +919,9 @@ class WebPConverter:
             default_format = "webp"
             default_border = False
             default_jpeg_quality = 95
+            default_resize_mode = "same_size"
+            default_long_edge = 1920
+            default_same_location = False
             
             # Update UI elements
             self.quality.set(default_quality)
@@ -732,10 +935,14 @@ class WebPConverter:
             self.output_format.set(default_format)
             self.white_border.set(default_border)
             self.jpeg_quality.set(default_jpeg_quality)
+            self.resize_mode.set(default_resize_mode)
+            self.long_edge_size.set(str(default_long_edge))
+            self.same_location.set(default_same_location)
             
             # Update convert button text and settings state
             self.update_convert_button_text()
             self.update_webp_settings_state()
+            self.update_output_folder_state()
             
             # Save to config
             config.save_quality(default_quality)
@@ -745,6 +952,9 @@ class WebPConverter:
             config.save_output_format(default_format)
             config.save_white_border(default_border)
             config.save_jpeg_quality(default_jpeg_quality)
+            config.save_resize_mode(default_resize_mode)
+            config.save_long_edge(default_long_edge)
+            config.save_same_location(default_same_location)
             
             # Show success message
             msgbox.showinfo(get_dialog("reset_success", "Settings Reset"), 
@@ -846,7 +1056,8 @@ class WebPConverter:
                                  get_message("no_files_text", "Please select some image files first."))
             return
             
-        if not self.output_folder.get():
+        # Only check output folder if not using same location
+        if not self.same_location.get() and not self.output_folder.get():
             messagebox.showwarning(get_message("no_output", "No Output Folder"), 
                                  get_message("no_output_text", "Please select an output folder."))
             return
@@ -949,13 +1160,16 @@ class WebPConverter:
             elif img.mode not in ('RGB', 'RGBA'):
                 img = img.convert('RGB')
             
+            # Apply resize if enabled (but not if white border is enabled, as it handles its own sizing)
+            if not self.white_border.get():
+                img = self.apply_resize(img)
+            
             # Apply white border if enabled
             if self.white_border.get():
                 img = self.apply_white_border(img)
                 
             # Generate output path - preserve folder structure if source folder exists
             input_path = Path(input_file)
-            output_base = Path(self.output_folder.get())
             
             # Determine output format and extension
             if self.output_format.get() == "jpeg":
@@ -963,12 +1177,20 @@ class WebPConverter:
             else:
                 output_extension = '.webp'
             
-            if self.source_folder:
-                # Calculate relative path from source folder
+            # Determine output base directory
+            if self.same_location.get():
+                # Save in same location as source file
+                output_base = input_path.parent
+            else:
+                # Use specified output folder
+                output_base = Path(self.output_folder.get())
+            
+            if self.source_folder and not self.same_location.get():
+                # Calculate relative path from source folder (only when not using same location)
                 source_path = Path(self.source_folder)
                 try:
                     relative_path = input_path.relative_to(source_path)
-                    # Change extension based on Instagram mode
+                    # Change extension
                     output_filename = relative_path.stem + output_extension
                     output_path = output_base / relative_path.parent / output_filename
                     
@@ -979,9 +1201,12 @@ class WebPConverter:
                     output_filename = input_path.stem + output_extension
                     output_path = output_base / output_filename
             else:
-                # No source folder, use flat structure
+                # Use flat structure (either no source folder or same location mode)
                 output_filename = input_path.stem + output_extension
                 output_path = output_base / output_filename
+            
+            # Generate unique filename if file already exists
+            output_path = self.get_unique_filename(str(output_path))
             
             # Save with appropriate format
             if self.output_format.get() == "jpeg":
@@ -1046,7 +1271,7 @@ def main(language=None):
     # Center the fixed-size window
     root.update_idletasks()
     width = 600
-    height = 450
+    height = 500
     
     x = (root.winfo_screenwidth() // 2) - (width // 2)
     y = (root.winfo_screenheight() // 2) - (height // 2)

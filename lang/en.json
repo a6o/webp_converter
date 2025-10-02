@@ -8,6 +8,7 @@
     "clear_files": "Clear Files",
     "output_folder": "Output Folder:",
     "browse": "Browse",
+    "same_location": "Save as same location",
     "quality": "Quality:",
     "preserve_metadata": "Preserve metadata",
       "convert_button": "Convert to WebP",
@@ -29,7 +30,10 @@
       "lossless_compression": "Lossless compression",
       "format_webp": "Save as WebP",
       "format_jpeg": "Save as JPEG", 
-      "white_border": "Add white border"
+      "white_border": "Add white border",
+      "sizing_settings": "Image Sizing",
+      "same_size": "Keep original size",
+      "set_long_edge": "Set long edge to:"
   },
   "menu": {
     "file": "File",
@@ -90,6 +94,7 @@
       "metadata_desc": "Keeps original image information (EXIF data, color profiles)",
       "format_desc": "WebP: Smaller files, better compression. JPEG: Universal compatibility.",
       "border_desc": "Creates 1440x1440 square with white border (long side = 1200px)",
+      "sizing_desc": "Resize images while maintaining aspect ratio",
     "reset_defaults": "Reset to Defaults",
     "confirm_reset": "Confirm Reset",
     "confirm_reset_msg": "Reset all settings to default values?",

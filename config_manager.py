@@ -202,6 +202,30 @@ class WebPConverterConfig(ConfigManager):
     def load_jpeg_quality(self):
         """Load JPEG quality setting, default to 95"""
         return self.load_int_setting("JpegQuality", 95)
+    
+    def save_resize_mode(self, resize_mode):
+        """Save resize mode setting"""
+        return self.save_setting("ResizeMode", resize_mode)
+    
+    def load_resize_mode(self):
+        """Load resize mode setting, default to 'same_size'"""
+        return self.load_setting("ResizeMode", "same_size")
+    
+    def save_long_edge(self, long_edge):
+        """Save long edge size setting"""
+        return self.save_int_setting("LongEdge", long_edge)
+    
+    def load_long_edge(self):
+        """Load long edge size setting, default to 1920"""
+        return self.load_int_setting("LongEdge", 1920)
+    
+    def save_same_location(self, same_location):
+        """Save same location setting"""
+        return self.save_bool_setting("SameLocation", same_location)
+    
+    def load_same_location(self):
+        """Load same location setting, default to False"""
+        return self.load_bool_setting("SameLocation", False)
 
 
 # Global instance for easy access
