@@ -28,7 +28,7 @@ class AboutDialog:
         self.about_window.update_idletasks()
         x = (self.about_window.winfo_screenwidth() // 2) - (225)
         y = (self.about_window.winfo_screenheight() // 2) - (250)
-        self.about_window.geometry(f"450x500+{x}+{y}")
+        self.about_window.geometry(f"450x220+{x}+{y}")
         
         self.setup_content()
         self.setup_bindings()
@@ -58,53 +58,53 @@ JPG and HEIC images to efficient WebP format.""")
                               justify="center")
         desc_label.pack(pady=(10, 0))
         
-        # Features
-        features_frame = ttk.LabelFrame(main_frame, text=get_about("features_title", "Features"), padding="10")
-        features_frame.pack(fill="x", pady=(15, 0))
+        # # Features
+        # features_frame = ttk.LabelFrame(main_frame, text=get_about("features_title", "Features"), padding="10")
+        # features_frame.pack(fill="x", pady=(15, 0))
         
-        features = get_about("features", [
-            "✓ JPG/JPEG and HEIC to WebP conversion",
-            "✓ Drag & drop interface",
-            "✓ Batch processing",
-            "✓ Quality control (1-100)",
-            "✓ Metadata preservation",
-            "✓ Progress tracking"
-        ])
+        # features = get_about("features", [
+        #     "✓ JPG/JPEG and HEIC to WebP conversion",
+        #     "✓ Drag & drop interface",
+        #     "✓ Batch processing",
+        #     "✓ Quality control (1-100)",
+        #     "✓ Metadata preservation",
+        #     "✓ Progress tracking"
+        # ])
         
-        for feature in features:
-            feature_label = ttk.Label(features_frame, text=feature, 
-                                     font=("Arial", 8))
-            feature_label.pack(anchor="w")
+        # for feature in features:
+        #     feature_label = ttk.Label(features_frame, text=feature, 
+        #                              font=("Arial", 8))
+        #     feature_label.pack(anchor="w")
         
         # Supported Formats
-        formats_frame = ttk.LabelFrame(main_frame, text=get_about("supported_title", "Supported Formats"), padding="10")
-        formats_frame.pack(fill="x", pady=(10, 0))
+#         formats_frame = ttk.LabelFrame(main_frame, text=get_about("supported_title", "Supported Formats"), padding="10")
+#         formats_frame.pack(fill="x", pady=(10, 0))
         
-        supported_formats = get_about("supported_formats", [
-            "• JPEG: jpg, jpeg, jpe, jfif",
-            "• HEIC: heic, heics, heif, heifs, hif",
-            "• PNG: png, apng (animated)",
-            "• GIF: gif (animated)",
-            "• BMP: bmp, dib",
-            "• TIFF: tiff, tif",
-            "• AVIF: avif, avifs",
-            "• TGA: tga, icb, vda, vst",
-            "• Other: ico, psd"
-        ])
+#         supported_formats = get_about("supported_formats", [
+#             "• JPEG: jpg, jpeg, jpe, jfif",
+#             "• HEIC: heic, heics, heif, heifs, hif",
+#             "• PNG: png, apng (animated)",
+#             "• GIF: gif (animated)",
+#             "• BMP: bmp, dib",
+#             "• TIFF: tiff, tif",
+#             "• AVIF: avif, avifs",
+#             "• TGA: tga, icb, vda, vst",
+#             "• Other: ico, psd"
+#         ])
         
-        for format_info in supported_formats:
-            format_label = ttk.Label(formats_frame, text=format_info, 
-                                   font=("Arial", 8))
-            format_label.pack(anchor="w")
+#         for format_info in supported_formats:
+#             format_label = ttk.Label(formats_frame, text=format_info, 
+#                                    font=("Arial", 8))
+#             format_label.pack(anchor="w")
         
-        # Benefits
-        benefits_text = get_about("benefits", """WebP provides 25-35% smaller files than JPG
-with better quality and universal browser support.""")
-        benefits_label = ttk.Label(main_frame, text=benefits_text,
-                                  font=("Arial", 8, "italic"),
-                                  foreground="#666666",
-                                  justify="center")
-        benefits_label.pack(pady=(10, 0))
+#         # Benefits
+#         benefits_text = get_about("benefits", """WebP provides 25-35% smaller files than JPG
+# with better quality and universal browser support.""")
+#         benefits_label = ttk.Label(main_frame, text=benefits_text,
+#                                   font=("Arial", 8, "italic"),
+#                                   foreground="#666666",
+#                                   justify="center")
+#         benefits_label.pack(pady=(10, 0))
         
         # Copyright
         copyright_label = ttk.Label(main_frame, 
@@ -132,39 +132,6 @@ with better quality and universal browser support.""")
     def close_dialog(self):
         """Close the about dialog"""
         self.about_window.destroy()
-
-# Configuration data for easy editing
-ABOUT_CONFIG = {
-    "app_name": "🖼️ WebP Converter",
-    "version": "1.2.0",
-    "description": """A modern Windows application for converting 
-JPG and HEIC images to efficient WebP format.""",
-    "features": [
-        "✓ JPG/JPEG and HEIC to WebP conversion",
-        "✓ Drag & drop interface", 
-        "✓ Batch processing",
-        "✓ Quality control (1-100)",
-        "✓ Metadata preservation",
-        "✓ Progress tracking"
-    ],
-    "benefits": """WebP provides 25-35% smaller files than JPG
-with better quality and universal browser support.""",
-    "copyright": "© 2024 - Open Source (MIT License)",
-    "window_size": "400x350",
-    "colors": {
-        "title": "#2E7D32",
-        "benefits": "#666666", 
-        "copyright": "#888888"
-    },
-    "fonts": {
-        "title": ("Arial", 16, "bold"),
-        "version": ("Arial", 10),
-        "description": ("Arial", 9),
-        "feature": ("Arial", 8),
-        "benefits": ("Arial", 8, "italic"),
-        "copyright": ("Arial", 8)
-    }
-}
 
 def show_about(parent):
     """Convenience function to show the about dialog"""
