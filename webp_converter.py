@@ -10,6 +10,7 @@ import os
 import threading
 from pathlib import Path
 from PIL import Image
+Image.MAX_IMAGE_PIXELS = None
 import pillow_heif
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from about_dialog import show_about

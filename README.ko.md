@@ -34,5 +34,6 @@ build.bat
 ```
 
 ## 버전
+- v1.0.4 - PILLOW의 MAX_IMAGE_PIXELS 제거
 - v1.0.3 - 사진 크기 수정 등등
 - v1.0.2 - 향상된 설정 대화상자, 빠른 변환
