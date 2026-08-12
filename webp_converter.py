@@ -16,6 +16,7 @@ from tkinterdnd2 import DND_FILES, TkinterDnD
 from about_dialog import show_about
 from lang_manager import init_language, get_lang_manager, get_main, get_menu, get_message, get_dialog
 from config_manager import config
+import dpi_helper
 import time
 
 # Register HEIF opener with Pillow
@@ -67,9 +68,8 @@ class WebPConverter:
         self.conversion_cancelled = False  # Flag to track if conversion was cancelled
         self.source_folder = None  # Track source folder for preserving structure
         
-        # Set fixed window size
-        self.root.geometry("600x500")
-        
+        # Window size is set by main(), once the UI exists and the DPI
+        # scale is known.
         self.setup_ui()
         self.setup_menu()
         self.setup_drag_drop()
@@ -251,17 +251,11 @@ class WebPConverter:
         # Create dialog window
         dialog = tk.Toplevel(self.root)
         dialog.title(get_dialog("settings_title", "Conversion Settings"))
-        dialog.geometry("450x800")
         dialog.resizable(False, False)
         dialog.transient(self.root)
         dialog.grab_set()
-        
-        # Center the dialog
-        dialog.update_idletasks()
-        x = (dialog.winfo_screenwidth() // 2) - (450 // 2)
-        y = (dialog.winfo_screenheight() // 2) - (800 // 2)
-        dialog.geometry(f"450x800+{x}+{y}")
-        
+        # Sized and centred at the end of this method, once its content exists.
+
         # Main frame
         main_frame = ttk.Frame(dialog, padding="20")
         main_frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -501,7 +495,11 @@ class WebPConverter:
         
         # Initialize sizing settings state based on white border setting
         self.update_sizing_settings_state()
-        
+
+        # Size and centre now that every control is in place. Height comes
+        # from the content so no dead space trails the buttons.
+        dpi_helper.size_window(dialog, 450, None)
+
         # Focus the dialog
         dialog.focus_set()
     
@@ -737,21 +735,23 @@ class WebPConverter:
         
         # Get current image dimensions
         original_width, original_height = img.size
-        
-        # Calculate scaling factor to make longest side = 1200
+
+        # Calculate new dimensions: long side is set exactly, short side is
+        # rounded to the nearest pixel to stay as close to the aspect ratio as possible
         if original_width >= original_height:
             # Width is longer or equal
-            scale_factor = max_image_size / original_width
+            new_width = max_image_size
+            new_height = max(1, round(original_height * max_image_size / original_width))
         else:
             # Height is longer
-            scale_factor = max_image_size / original_height
-        
-        # Calculate new dimensions
-        new_width = int(original_width * scale_factor)
-        new_height = int(original_height * scale_factor)
-        
+            new_height = max_image_size
+            new_width = max(1, round(original_width * max_image_size / original_height))
+
         # Resize the image
-        resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        if (new_width, new_height) != img.size:
+            resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        else:
+            resized_img = img
         
         # Create white canvas
         canvas = Image.new('RGB', (canvas_size, canvas_size), 'white')
@@ -778,18 +778,21 @@ class WebPConverter:
                     # Get current dimensions
                     width, height = img.size
                     
-                    # Calculate new dimensions maintaining aspect ratio
-                    if width > height:
-                        # Landscape: width is the long edge
+                    # Calculate new dimensions maintaining aspect ratio.
+                    # The long edge is set exactly to the target, the short edge is
+                    # rounded to the nearest pixel instead of truncated.
+                    if width >= height:
+                        # Landscape or square: width is the long edge
                         new_width = target_size
-                        new_height = int(height * target_size / width)
+                        new_height = max(1, round(height * target_size / width))
                     else:
-                        # Portrait or square: height is the long edge
+                        # Portrait: height is the long edge
                         new_height = target_size
-                        new_width = int(width * target_size / height)
-                    
+                        new_width = max(1, round(width * target_size / height))
+
                     # Resize the image
-                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                    if (new_width, new_height) != img.size:
+                        img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
             except (ValueError, AttributeError):
                 # Invalid size, keep original
                 pass
@@ -1266,18 +1269,22 @@ class WebPConverter:
 
 def main(language=None):
     """Main application entry point"""
+    # Before any window exists, or Windows renders the app at 96 DPI and
+    # stretches the bitmap to fit a scaled display.
+    dpi_helper.enable_dpi_awareness()
+
     root = TkinterDnD.Tk()  # Use TkinterDnD root for drag-drop support
+
+    # Before the widgets are built, so their fonts pick up the scaling.
+    dpi_helper.init_scaling(root)
+
     app = WebPConverter(root, language)
-    
-    # Center the fixed-size window
-    root.update_idletasks()
-    width = 600
-    height = 500
-    
-    x = (root.winfo_screenwidth() // 2) - (width // 2)
-    y = (root.winfo_screenheight() // 2) - (height // 2)
-    root.geometry(f"{width}x{height}+{x}+{y}")
-    
+
+    # Keep the 600px design width, but take the height from the content:
+    # the rows are pinned to the top, so any surplus height would show up
+    # as a dead band under the Convert button.
+    dpi_helper.size_window(root, 600, None)
+
     root.mainloop()
 
 if __name__ == "__main__":

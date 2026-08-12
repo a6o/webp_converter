@@ -31,6 +31,7 @@ build.bat
 ```
 
 ## Version
+- v1.0.5 - DPI 이상한거 수정
 - v1.0.4 - PILLOW의 MAX_IMAGE_PIXELS 제거
 - v1.0.3 - 사진 크기 수정 등등
 - v1.0.2 - Enhanced settings dialog, faster conversion

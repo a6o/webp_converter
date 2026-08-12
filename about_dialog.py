@@ -7,6 +7,7 @@ Displays application information, features, and version details
 import tkinter as tk
 from tkinter import ttk
 from lang_manager import get_about
+import dpi_helper
 
 class AboutDialog:
     """About dialog window for WebP Converter"""
@@ -19,19 +20,15 @@ class AboutDialog:
         """Create and show the About dialog"""
         self.about_window = tk.Toplevel(self.parent)
         self.about_window.title(get_about("title", "About WebP Converter"))
-        self.about_window.geometry("450x500")
         self.about_window.resizable(False, False)
         self.about_window.transient(self.parent)
         self.about_window.grab_set()
-        
-        # Center the about window
-        self.about_window.update_idletasks()
-        x = (self.about_window.winfo_screenwidth() // 2) - (225)
-        y = (self.about_window.winfo_screenheight() // 2) - (250)
-        self.about_window.geometry(f"450x220+{x}+{y}")
-        
+
         self.setup_content()
         self.setup_bindings()
+
+        # Size and centre once the content exists, so the window fits it
+        dpi_helper.size_window(self.about_window, 450, None)
         
     def setup_content(self):
         """Set up the dialog content"""
